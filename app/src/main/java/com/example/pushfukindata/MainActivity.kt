@@ -1,6 +1,7 @@
 package com.example.pushfukindata
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -141,6 +142,24 @@ fun ManualFoodEntryScreen() {
                 db.collection("default_food")
                     .document(id)
                     .set(foodData)
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "Lưu thành công", Toast.LENGTH_SHORT).show()
+
+                        // Reset các trường sau khi lưu thành công
+                        id = ""
+                        name = ""
+                        calo = ""
+                        fat = ""
+                        carb = ""
+                        protein = ""
+                        quantity = ""
+                        urlImage = ""
+                        selectedType = typeOptions[0]
+                        selectedQtyType = qtyOptions[0]
+                    }
+                    .addOnFailureListener {
+                        Toast.makeText(context, "Lỗi khi lưu dữ liệu", Toast.LENGTH_SHORT).show()
+                    }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
