@@ -29,7 +29,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             PushFukinDataTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    ManualFoodEntryScreen()
+                    //ManualFoodEntryScreen()
+                    ManualExerciseEntryScreen()
                 }
             }
         }
@@ -167,3 +168,86 @@ fun ManualFoodEntryScreen() {
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ManualExerciseEntryScreen() {
+    val db = Firebase.firestore
+    val context = LocalContext.current
+
+    // Các field cơ bản
+    var name by remember { mutableStateOf("") }
+    var caloPerHour by remember { mutableStateOf("") }
+    var urlImage by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Nhập tên bài tập
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Tên bài tập") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Nhập calo mỗi giờ
+        OutlinedTextField(
+            value = caloPerHour,
+            onValueChange = { caloPerHour = it },
+            label = { Text("Calo mỗi giờ") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Nhập URL ảnh
+        OutlinedTextField(
+            value = urlImage,
+            onValueChange = { urlImage = it },
+            label = { Text("URL ảnh") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Nút lưu dữ liệu vào Firestore
+        Button(
+            onClick = {
+                if (name.isBlank() || caloPerHour.isBlank()) {
+                    Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                val exerciseData = hashMapOf(
+                    "name" to name,
+                    "calo_per_hour" to (caloPerHour.toIntOrNull() ?: 0),
+                    "url_image" to urlImage
+                )
+
+                // Tạo ID tự động và lưu dữ liệu
+                val newDocRef = db.collection("default_exercise").document()
+
+                newDocRef.set(exerciseData)
+                    .addOnSuccessListener {
+                        // Hiển thị thông báo thành công
+                        Toast.makeText(context, "Lưu thành công", Toast.LENGTH_SHORT).show()
+
+                        // Reset các trường sau khi lưu thành công
+                        name = ""
+                        caloPerHour = ""
+                        urlImage = ""
+                    }
+                    .addOnFailureListener {
+                        // Hiển thị thông báo lỗi nếu có lỗi trong quá trình lưu dữ liệu
+                        Toast.makeText(context, "Lỗi khi lưu dữ liệu", Toast.LENGTH_SHORT).show()
+                    }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Lưu vào Firestore")
+        }
+    }
+}
+
+
