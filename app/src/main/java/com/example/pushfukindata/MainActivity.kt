@@ -136,7 +136,7 @@ fun ManualFoodEntryScreen() {
                     "carb" to (carb.toFloatOrNull() ?: 0f),
                     "protein" to (protein.toFloatOrNull() ?: 0f),
                     "type" to selectedType,
-                    "quantity" to (quantity.toIntOrNull() ?: 0),
+                    "Quantity" to (quantity.toIntOrNull() ?: 0),
                     "quantity_type" to selectedQtyType,
                     "urlimage" to urlImage
                 )
