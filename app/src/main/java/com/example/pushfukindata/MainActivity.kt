@@ -635,7 +635,7 @@ fun AddDietDishScreen() {
                         val foodData = foodSnap.data ?: return@addOnSuccessListener
 
                         val dishData: Map<String, Any> = mapOf(
-                            "id" to UUID.randomUUID().toString(),
+                            "id" to foodId,
                             "foodId" to foodId,
                             "mealPlanId" to mealPlanId,
                             "name" to (foodData["name"] as? String ?: ""),
