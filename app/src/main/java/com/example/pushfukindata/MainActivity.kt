@@ -39,8 +39,8 @@ class MainActivity : ComponentActivity() {
                             .verticalScroll(scrollState)
                             .padding(16.dp)
                     ) {
-                        //ManualFoodEntryScreen()
-                        ManualExerciseEntryScreen()
+                        ManualFoodEntryScreen()
+                        //ManualExerciseEntryScreen()
                         //AddCustomFoodScreen()
                     }
                 }
