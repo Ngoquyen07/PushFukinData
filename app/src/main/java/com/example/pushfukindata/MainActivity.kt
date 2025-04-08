@@ -1,6 +1,7 @@
 package com.example.pushfukindata
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -24,6 +25,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalContext
+import com.android.identity.util.UUID
+import com.google.firebase.firestore.SetOptions
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,9 +42,11 @@ class MainActivity : ComponentActivity() {
                             .verticalScroll(scrollState)
                             .padding(16.dp)
                     ) {
-                        ManualFoodEntryScreen()
+                        //ManualFoodEntryScreen()
                         //ManualExerciseEntryScreen()
                         //AddCustomFoodScreen()
+                        //AddDefaultDietMealInPlanScreen()
+                        AddDietDishScreen()
                     }
                 }
 
@@ -484,5 +489,203 @@ fun AddCustomFoodScreen() {
         }
     }
 }
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddDefaultDietMealInPlanScreen() {
+    val db = Firebase.firestore
+    val context = LocalContext.current
+
+    var id by remember { mutableStateOf("") }
+
+    // Hiển thị dạng số: 1, 2, 3
+    val typeOptions = listOf(1, 2, 3)
+    var expanded by remember { mutableStateOf(false) }
+    var selectedType by remember { mutableStateOf(typeOptions[0]) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        OutlinedTextField(
+            value = id,
+            onValueChange = { id = it },
+            label = { Text("ID kế hoạch bữa ăn") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Dropdown chọn loại kiểu ăn (dạng số)
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+        ) {
+            OutlinedTextField(
+                value = selectedType.toString(),
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Kiểu ăn (1–3)") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                typeOptions.forEach { type ->
+                    DropdownMenuItem(
+                        text = { Text(type.toString()) },
+                        onClick = {
+                            selectedType = type
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        Button(
+            onClick = {
+                Log.d("MEAL_DEBUG", "Click OK: ID = $id")
+
+                if (id.isBlank()) {
+                    Toast.makeText(context, "Vui lòng nhập ID", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                val mealData = hashMapOf(
+                    "id" to id,
+                    "type" to selectedType,
+                    "totalCalo" to 0f,
+                    "totalFat" to 0f,
+                    "totalCarb" to 0f,
+                    "totalProtein" to 0f,
+                    "urlImage" to ""
+                )
+
+                db.collection("default_diet_meal_in_plan")
+                    .document(id)
+                    .set(mealData)
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "Tạo thành công!", Toast.LENGTH_SHORT).show()
+                        Log.d("MEAL_DEBUG", "Tạo thành công")
+                        id = ""
+                        selectedType = typeOptions[0]
+                    }
+                    .addOnFailureListener {
+                        Toast.makeText(context, "Lỗi khi tạo document", Toast.LENGTH_SHORT).show()
+                        Log.e("MEAL_DEBUG", "Lỗi: ${it.message}")
+                    }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Tạo default_diet_meal_in_plan")
+        }
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddDietDishScreen() {
+    val db = Firebase.firestore
+    val context = LocalContext.current
+
+    var foodId by remember { mutableStateOf("") }
+    var mealPlanId by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        OutlinedTextField(
+            value = foodId,
+            onValueChange = { foodId = it },
+            label = { Text("ID của DefaultFood") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = mealPlanId,
+            onValueChange = { mealPlanId = it },
+            label = { Text("ID của DefaultDietMealInPlan") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Button(
+            onClick = {
+                if (foodId.isBlank() || mealPlanId.isBlank()) {
+                    Toast.makeText(context, "Vui lòng nhập đủ ID", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                val foodRef = db.collection("default_food").document(foodId)
+                foodRef.get()
+                    .addOnSuccessListener { foodSnap ->
+                        if (!foodSnap.exists()) {
+                            Toast.makeText(context, "Không tìm thấy DefaultFood", Toast.LENGTH_SHORT).show()
+                            return@addOnSuccessListener
+                        }
+
+                        val foodData = foodSnap.data ?: return@addOnSuccessListener
+
+                        val dishData: Map<String, Any> = mapOf(
+                            "id" to UUID.randomUUID().toString(),
+                            "foodId" to foodId,
+                            "mealPlanId" to mealPlanId,
+                            "name" to (foodData["name"] as? String ?: ""),
+                            "calo" to ((foodData["calo"] as? Number)?.toFloat() ?: 0f),
+                            "fat" to ((foodData["fat"] as? Number)?.toFloat() ?: 0f),
+                            "carb" to ((foodData["carb"] as? Number)?.toFloat() ?: 0f),
+                            "protein" to ((foodData["protein"] as? Number)?.toFloat() ?: 0f),
+                            "quantity" to ((foodData["Quantity"] as? Number)?.toInt() ?: 0),
+                            "quantityType" to (foodData["quantity_type"] as? String ?: ""),
+                            "urlImage" to (foodData["urlimage"] as? String ?: "")
+                        )
+
+                        // Tạo dish
+                        db.collection("diet_dish")
+                            .document(dishData["id"] as String)
+                            .set(dishData)
+                            .addOnSuccessListener {
+                                // Cập nhật dinh dưỡng tổng
+                                val mealRef = db.collection("default_diet_meal_in_plan").document(mealPlanId)
+                                mealRef.get()
+                                    .addOnSuccessListener { mealSnap ->
+                                        val old = mealSnap.data ?: return@addOnSuccessListener
+                                        val updated = hashMapOf(
+                                            "totalCalo" to ((old["totalCalo"] as? Number)?.toFloat() ?: 0f) + (dishData["calo"] as Float),
+                                            "totalFat" to ((old["totalFat"] as? Number)?.toFloat() ?: 0f) + (dishData["fat"] as Float),
+                                            "totalCarb" to ((old["totalCarb"] as? Number)?.toFloat() ?: 0f) + (dishData["carb"] as Float),
+                                            "totalProtein" to ((old["totalProtein"] as? Number)?.toFloat() ?: 0f) + (dishData["protein"] as Float)
+                                        )
+                                        mealRef.set(updated, SetOptions.merge())
+                                            .addOnSuccessListener {
+                                                Toast.makeText(context, "Thêm thành công!", Toast.LENGTH_SHORT).show()
+                                                foodId = ""
+                                                mealPlanId = ""
+                                            }
+                                    }
+                            }
+                            .addOnFailureListener {
+                                Toast.makeText(context, "Lỗi khi tạo dish", Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                    .addOnFailureListener {
+                        Toast.makeText(context, "Không thể lấy DefaultFood", Toast.LENGTH_SHORT).show()
+                    }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Thêm DietDish và cập nhật Meal")
+        }
+    }
+}
+
 
 
