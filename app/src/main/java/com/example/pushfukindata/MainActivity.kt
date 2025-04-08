@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.dp
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
@@ -28,11 +30,26 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             PushFukinDataTheme {
+
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    //ManualFoodEntryScreen()
-                    //ManualExerciseEntryScreen()
-                    AddCustomFoodScreen()
+                    val scrollState = rememberScrollState()
+
+                    Column(
+                        modifier = Modifier
+                            .verticalScroll(scrollState)
+                            .padding(16.dp)
+                    ) {
+                        //ManualFoodEntryScreen()
+                        ManualExerciseEntryScreen()
+                        //AddCustomFoodScreen()
+                    }
                 }
+
+//                Surface(modifier = Modifier.fillMaxSize()) {
+//                    //ManualFoodEntryScreen()
+//                    ManualExerciseEntryScreen()
+//                    //AddCustomFoodScreen()
+//                }
             }
         }
     }
@@ -169,17 +186,21 @@ fun ManualFoodEntryScreen() {
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManualExerciseEntryScreen() {
     val db = Firebase.firestore
     val context = LocalContext.current
 
-    // Các field cơ bản
+    var id by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
-    var caloPerHour by remember { mutableStateOf("") }
+    var caloBurn by remember { mutableStateOf("") }
+    var unitType by remember { mutableStateOf("") }
+    var unit by remember { mutableStateOf("") }
     var urlImage by remember { mutableStateOf("") }
+
+    val unitTypeOptions = listOf("min", "rep")
+    var expanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -187,7 +208,13 @@ fun ManualExerciseEntryScreen() {
             .fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Nhập tên bài tập
+        OutlinedTextField(
+            value = id,
+            onValueChange = { id = it },
+            label = { Text("ID") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
         OutlinedTextField(
             value = name,
             onValueChange = { name = it },
@@ -195,16 +222,54 @@ fun ManualExerciseEntryScreen() {
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Nhập calo mỗi giờ
         OutlinedTextField(
-            value = caloPerHour,
-            onValueChange = { caloPerHour = it },
-            label = { Text("Calo mỗi giờ") },
+            value = caloBurn,
+            onValueChange = { caloBurn = it },
+            label = { Text("Calo đốt mỗi đơn vị") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Nhập URL ảnh
+        // ComboBox cho unitType
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+        ) {
+            OutlinedTextField(
+                value = unitType,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Loại đơn vị") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                unitTypeOptions.forEach { selectionOption ->
+                    DropdownMenuItem(
+                        text = { Text(selectionOption) },
+                        onClick = {
+                            unitType = selectionOption
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        OutlinedTextField(
+            value = unit,
+            onValueChange = { unit = it },
+            label = { Text("Số đơn vị") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+
         OutlinedTextField(
             value = urlImage,
             onValueChange = { urlImage = it },
@@ -212,35 +277,36 @@ fun ManualExerciseEntryScreen() {
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Nút lưu dữ liệu vào Firestore
         Button(
             onClick = {
-                if (name.isBlank() || caloPerHour.isBlank()) {
+                if (id.isBlank() || name.isBlank() || caloBurn.isBlank() || unitType.isBlank() || unit.isBlank()) {
                     Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin", Toast.LENGTH_SHORT).show()
                     return@Button
                 }
 
                 val exerciseData = hashMapOf(
+                    "id" to id,
                     "name" to name,
-                    "calo_per_hour" to (caloPerHour.toIntOrNull() ?: 0),
-                    "url_image" to urlImage
+                    "caloBurn" to (caloBurn.toIntOrNull() ?: 0),
+                    "unitType" to unitType,
+                    "unit" to (unit.toIntOrNull() ?: 1),
+                    "urlImage" to urlImage
                 )
 
-                // Tạo ID tự động và lưu dữ liệu
-                val newDocRef = db.collection("default_exercise").document()
-
-                newDocRef.set(exerciseData)
+                db.collection("default_exercise").document(id)
+                    .set(exerciseData)
                     .addOnSuccessListener {
-                        // Hiển thị thông báo thành công
                         Toast.makeText(context, "Lưu thành công", Toast.LENGTH_SHORT).show()
 
-                        // Reset các trường sau khi lưu thành công
+                        // Reset các trường
+                        id = ""
                         name = ""
-                        caloPerHour = ""
+                        caloBurn = ""
+                        unitType = ""
+                        unit = ""
                         urlImage = ""
                     }
                     .addOnFailureListener {
-                        // Hiển thị thông báo lỗi nếu có lỗi trong quá trình lưu dữ liệu
                         Toast.makeText(context, "Lỗi khi lưu dữ liệu", Toast.LENGTH_SHORT).show()
                     }
             },
@@ -250,6 +316,7 @@ fun ManualExerciseEntryScreen() {
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCustomFoodScreen() {
@@ -261,7 +328,6 @@ fun AddCustomFoodScreen() {
     var fat by remember { mutableStateOf("") }
     var carb by remember { mutableStateOf("") }
     var protein by remember { mutableStateOf("") }
-    var quantity by remember { mutableStateOf("") }
     var urlImage by remember { mutableStateOf("") }
 
     val typeOptions = listOf(1, 2, 3, 4)
@@ -271,6 +337,9 @@ fun AddCustomFoodScreen() {
     val qtyOptions = listOf("gram", "ml")
     var expandedQtyType by remember { mutableStateOf(false) }
     var selectedQtyType by remember { mutableStateOf(qtyOptions[0]) }
+
+    // Tính số lượng hiển thị mặc định dựa trên loại đơn vị
+    val displayedQuantity = if (selectedQtyType == "gram") "100" else "250"
 
     Column(
         modifier = Modifier
@@ -312,11 +381,14 @@ fun AddCustomFoodScreen() {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
+
+        // Số lượng mặc định (readonly)
         OutlinedTextField(
-            value = quantity,
-            onValueChange = { quantity = it },
+            value = displayedQuantity,
+            onValueChange = {},
             label = { Text("Số lượng mặc định") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            readOnly = true,
+            enabled = false,
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -384,13 +456,13 @@ fun AddCustomFoodScreen() {
                     "carb" to (carb.toFloatOrNull() ?: 0f),
                     "protein" to (protein.toFloatOrNull() ?: 0f),
                     "type" to selectedType,
-                    "Quantity" to (quantity.toIntOrNull() ?: 0),
+                    "Quantity" to displayedQuantity.toInt(),
                     "quantity_type" to selectedQtyType,
                     "urlimage" to urlImage
                 )
 
-                db.collection("custom_food")
-                    .add(foodData) // để Firestore tự sinh ID
+                db.collection("default_food")
+                    .add(foodData)
                     .addOnSuccessListener {
                         Toast.makeText(context, "Lưu thành công", Toast.LENGTH_SHORT).show()
                         name = ""
@@ -398,7 +470,6 @@ fun AddCustomFoodScreen() {
                         fat = ""
                         carb = ""
                         protein = ""
-                        quantity = ""
                         urlImage = ""
                         selectedType = typeOptions[0]
                         selectedQtyType = qtyOptions[0]
